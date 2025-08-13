@@ -1,22 +1,44 @@
 cmake_minimum_required(VERSION 3.15)
 project(my_ssl_app)
-
 set(CMAKE_CXX_STANDARD 17)
 
-if(WIN32)
-    # ======== Windows Paths ========
-    set(POCO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/thirdParty/window/Poco-1.14.2/install/include")
-    set(POCO_LIB_DIR     "${CMAKE_SOURCE_DIR}/thirdParty/window/Poco-1.14.2/install/lib")
+# ========= User-Defined Build Target =========
+# Usage:
+#   cmake -S . -B build -DTARGET_OS=windows
+#   cmake -S . -B build -DTARGET_OS=mac
+#   cmake -S . -B build -DTARGET_OS=linux
+if(NOT TARGET_OS)
+    message(FATAL_ERROR "Please specify -DTARGET_OS=windows|mac|linux")
+endif()
 
-    set(OPENSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/thirdParty/window/openssl-3.5.2/install/include")
-    set(OPENSSL_LIB_DIR     "${CMAKE_SOURCE_DIR}/thirdParty/window/openssl-3.5.2/install/lib/VC/x64/MD")
+# ========= Common =========
+set(SRC_FILES 
+    src/main.cpp
+    src/SSLHandler.cpp
+)
 
-    include_directories(${POCO_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
-    link_directories(${POCO_LIB_DIR} ${OPENSSL_LIB_DIR})
+function(copy_runtime_libs target lib_dir)
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${lib_dir}" "$<TARGET_FILE_DIR:${target}>"
+    )
+endfunction()
 
-    add_executable(my_ssl_app src/main.cpp)
+# ========= Platform Selection =========
+if(TARGET_OS STREQUAL "windows")
+    set(POCO_ROOT      "${CMAKE_SOURCE_DIR}/thirdParty/window/Poco-1.14.2/install")
+    set(OPENSSL_ROOT   "${CMAKE_SOURCE_DIR}/thirdParty/window/openssl-3.5.2/install")
 
-    # Link by name only — Windows loader will look in exe folder first
+    include_directories(
+        ${POCO_ROOT}/include
+        ${OPENSSL_ROOT}/include
+    )
+    link_directories(
+        ${POCO_ROOT}/lib
+        ${OPENSSL_ROOT}/lib/VC/x64/MD
+    )
+
+    add_executable(my_ssl_app ${SRC_FILES})
     target_link_libraries(my_ssl_app
         PocoCrypto
         PocoNet
@@ -26,56 +48,46 @@ if(WIN32)
         ws2_32
     )
 
-    # Post-build: copy DLLs to the same folder as the executable
-    add_custom_command(TARGET my_ssl_app POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${POCO_LIB_DIR}" "$<TARGET_FILE_DIR:my_ssl_app>"
-    )
-    add_custom_command(TARGET my_ssl_app POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${OPENSSL_LIB_DIR}" "$<TARGET_FILE_DIR:my_ssl_app>"
+    copy_runtime_libs(my_ssl_app "${POCO_ROOT}/bin")
+
+elseif(TARGET_OS STREQUAL "mac")
+    set(OPENSSL_ROOT_DIR "${CMAKE_SOURCE_DIR}/thirdParty/mac/openssl-3.5.2/install")
+    find_package(OpenSSL REQUIRED)
+
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/thirdParty/mac/Poco-1.14.2/install")
+    find_package(Poco REQUIRED Foundation Net NetSSL Crypto Util)
+
+    set(CMAKE_INSTALL_RPATH "@executable_path")
+    set(CMAKE_BUILD_RPATH   "@executable_path")
+
+    add_executable(my_ssl_app ${SRC_FILES})
+    target_link_libraries(my_ssl_app
+        PRIVATE Poco::Foundation Poco::Net Poco::NetSSL Poco::Crypto Poco::Util
+                OpenSSL::SSL OpenSSL::Crypto
     )
 
-else() # Linux / Unix
-    # ======== RPATH SETTINGS ========
-    set(CMAKE_SKIP_BUILD_RPATH FALSE)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)   # Don't add absolute paths automatically
-    set(CMAKE_INSTALL_RPATH "$ORIGIN")             # Only relative to executable
-    set(CMAKE_BUILD_RPATH "$ORIGIN")               # Only relative to executable
+    copy_runtime_libs(my_ssl_app "${CMAKE_SOURCE_DIR}/thirdParty/mac/Poco-1.14.2/install/lib")
+    copy_runtime_libs(my_ssl_app "${CMAKE_SOURCE_DIR}/thirdParty/mac/openssl-3.5.2/install/lib")
 
-    # ======== FIND OPENSSL ========
+elseif(TARGET_OS STREQUAL "linux")
     set(OPENSSL_ROOT_DIR "${CMAKE_SOURCE_DIR}/thirdParty/linux/openssl-3.5.2/install")
     find_package(OpenSSL REQUIRED)
 
-    # ======== FIND POCO ========
     set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/thirdParty/linux/Poco-1.14.2/install")
     find_package(Poco REQUIRED Foundation Net NetSSL Crypto Util)
 
-    # ======== SOURCE FILES ========
-    add_executable(my_ssl_app src/main.cpp)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
+    set(CMAKE_BUILD_RPATH   "$ORIGIN")
 
-    # ======== LINK LIBRARIES ========
+    add_executable(my_ssl_app ${SRC_FILES})
     target_link_libraries(my_ssl_app
-        PRIVATE
-            Poco::Foundation
-            Poco::Net
-            Poco::NetSSL
-            Poco::Crypto
-            Poco::Util
-            OpenSSL::SSL
-            OpenSSL::Crypto
+        PRIVATE Poco::Foundation Poco::Net Poco::NetSSL Poco::Crypto Poco::Util
+                OpenSSL::SSL OpenSSL::Crypto
     )
 
-    # Post-build: copy .so files to the same directory as executable
-    add_custom_command(TARGET my_ssl_app POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/thirdParty/linux/Poco-1.14.2/install/lib" "$<TARGET_FILE_DIR:my_ssl_app>"
-    )
-    add_custom_command(TARGET my_ssl_app POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/thirdParty/linux/openssl-3.5.2/install/lib" "$<TARGET_FILE_DIR:my_ssl_app>"
-    )
+    copy_runtime_libs(my_ssl_app "${CMAKE_SOURCE_DIR}/thirdParty/linux/Poco-1.14.2/install/lib")
+    copy_runtime_libs(my_ssl_app "${CMAKE_SOURCE_DIR}/thirdParty/linux/openssl-3.5.2/install/lib")
 
+else()
+    message(FATAL_ERROR "Unknown TARGET_OS: ${TARGET_OS}")
 endif()
-

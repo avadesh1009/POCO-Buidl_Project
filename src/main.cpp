@@ -1,40 +1,40 @@
-#include <Poco/Net/HTTPSClientSession.h>
-#include <Poco/Net/HTTPRequest.h>
-#include <Poco/Net/HTTPResponse.h>
-#include <Poco/StreamCopier.h>
-#include <Poco/Net/SSLManager.h>
-#include <Poco/Net/AcceptCertificateHandler.h>
-#include <Poco/Net/Context.h>
+#include "SSLHandler.h"
 #include <iostream>
-#include <memory>
-
-using namespace Poco::Net;
-using namespace Poco;
-using namespace std;
+#include <vector>
+#include <utility>
 
 int main() {
     try {
-        // Initialize SSL
-        SharedPtr<InvalidCertificateHandler> certHandler = new AcceptCertificateHandler(false);
-        Context::Ptr context = new Context(Context::CLIENT_USE, "", Context::VERIFY_NONE);
-        SSLManager::instance().initializeClient(0, certHandler, context);
+        SSLHandler handler;
+        
+        // Define multiple websites to test
+        std::vector<std::pair<std::string, int>> websites = {
+            {"api.github.com", 443},
+            {"api.openweathermap.org", 443},
+            {"api.exchangerate-api.com", 443}
+        };
 
-        // Connect to example.com over HTTPS
-        HTTPSClientSession session("www.example.com", 443);
-        HTTPRequest request(HTTPRequest::HTTP_GET, "/");
-        session.sendRequest(request);
+        // Test each website
+        for (const auto& site : websites) {
+            std::cout << "\nTesting connection to: " << site.first << std::endl;
+            
+            if (handler.connectToServer(site.first, site.second)) {
+                std::cout << "✓ Successfully connected to " << site.first << std::endl;
+                
+                // Send a request
+                std::string response = handler.sendRequest("/");
+                std::cout << "Response: " << response << std::endl;
+            } else {
+                std::cout << "✗ Failed to connect to " << site.first << std::endl;
+            }
+            
+            std::cout << "----------------------------------------" << std::endl;
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
 
-        // Get the response
-        HTTPResponse response;
-        istream& rs = session.receiveResponse(response);
-
-        cout << "HTTP Response: " << response.getStatus() << " " << response.getReason() << endl;
-        StreamCopier::copyStream(rs, cout);
-    }
-    catch (Exception& ex) {
-        cerr << "Poco Exception: " << ex.displayText() << endl;
-    }
-    catch (std::exception& ex) {
-        cerr << "Std Exception: " << ex.what() << endl;
-    }
+    return 0;
 }
