@@ -10,6 +10,8 @@ public:
     bool connectToServer(const std::string& host, int port);
     std::string sendRequest(const std::string& path);
 
+    void testWebsites();
+
 private:
     std::string host_;
     Poco::Net::HTTPSClientSession* session_;

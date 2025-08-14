@@ -31,3 +31,26 @@ std::string SSLHandler::sendRequest(const std::string& path) {
         return std::string("Error: ") + e.what();
     }
 }
+
+void SSLHandler::testWebsites() {
+    // List of websites to test
+    std::vector<std::pair<std::string, int>> websites = {
+        {"api.github.com", 443},
+        {"api.openweathermap.org", 443},
+        {"api.exchangerate-api.com", 443}
+    };
+
+    for (const auto& site : websites) {
+        std::cout << "\nTesting connection to: " << site.first << std::endl;
+
+        if (connectToServer(site.first, site.second)) {
+            std::cout << "✓ Successfully connected to " << site.first << std::endl;
+            std::string response = sendRequest("/");
+            std::cout << "Response: " << response << std::endl;
+        } else {
+            std::cout << "✗ Failed to connect to " << site.first << std::endl;
+        }
+
+        std::cout << "----------------------------------------" << std::endl;
+    }
+}

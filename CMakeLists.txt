@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 project(my_ssl_app)
 set(CMAKE_CXX_STANDARD 17)
 
+# ========= Single Output Folder =========
+set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin")
+file(MAKE_DIRECTORY ${OUTPUT_DIR})
+
 # ========= User-Defined Build Target =========
 # Usage:
 #   cmake -S . -B build -DTARGET_OS=windows
@@ -15,14 +19,21 @@ endif()
 set(SRC_FILES 
     src/main.cpp
     src/SSLHandler.cpp
+    src/CMx_Non_SecureSocket.cpp
 )
 
+# Update copy_runtime_libs to always copy to OUTPUT_DIR
 function(copy_runtime_libs target lib_dir)
-    add_custom_command(TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${lib_dir}" "$<TARGET_FILE_DIR:${target}>"
-    )
+    if(EXISTS "${lib_dir}")
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${lib_dir}" "${OUTPUT_DIR}"
+        )
+    endif()
 endfunction()
+
+# Set the executable output folder for all platforms
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 # ========= Platform Selection =========
 if(TARGET_OS STREQUAL "windows")
