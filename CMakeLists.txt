@@ -20,6 +20,7 @@ set(SRC_FILES
     src/main.cpp
     src/SSLHandler.cpp
     src/CMx_Non_SecureSocket.cpp
+    src/CMx_BaseSocket.cpp
 )
 
 # Update copy_runtime_libs to always copy to OUTPUT_DIR

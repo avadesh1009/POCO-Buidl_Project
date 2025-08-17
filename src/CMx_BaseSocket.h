@@ -27,54 +27,53 @@ struct MxMessage {
     std::string iso8601Ts;  // when received
 };
 
+enum class IPMode {
+    IPv4 = 1,
+    IPv6,
+    DualStack
+};
+
 class CMx_BaseSocket {
 protected:
-    bool m_bIsConnected{false};
-    bool m_bIsSSL{false};
-    bool m_bIsServer{false};
-    bool m_bIsBlocking{true};
+    bool m_bIsConnected;
+    bool m_bIsSSL;
+    bool m_bIsServer;
+    bool m_bIsBlocking;
 
 public:
-    CMx_BaseSocket() = default;
-    CMx_BaseSocket(bool isSSL, bool isServer)
-        : m_bIsSSL(isSSL), m_bIsServer(isServer) {}
-    virtual ~CMx_BaseSocket() = default;
+    CMx_BaseSocket();
+    CMx_BaseSocket(bool isSSL, bool isServer);
+    virtual ~CMx_BaseSocket();
+
+    // reset function
+    virtual void reset();
 
     // flags
-    bool isConnected() const { return m_bIsConnected; }
-    bool isBlocking()  const { return m_bIsBlocking; }
-    bool isSSL()       const { return m_bIsSSL; }
-    bool isServer()    const { return m_bIsServer; }
+    inline bool isConnected() const { return m_bIsConnected; }
+    inline bool isBlocking()  const { return m_bIsBlocking; }
+    inline bool isSSL()       const { return m_bIsSSL; }
+    inline bool isServer()    const { return m_bIsServer; }
 
     // server side
-    virtual mx_err bind(int port) = 0;
-    virtual mx_err listen() = 0;
+    virtual void bind(int port,IPMode ipMode, bool reuseAddress = true,bool reusePort = false) = 0;
+    virtual void listen(int backlog = 64) = 0;
     virtual std::unique_ptr<CMx_BaseSocket> accept() = 0;
 
     // client side
-    virtual mx_err connect(const std::string& ip, int port) = 0;
+    virtual bool  connect(const std::string& ip, int port, int timeoutSeconds = 8000) = 0;
 
     // io
-    virtual mx_err sendBytes(const void* buf, int len, int* sent = nullptr) = 0;
-    virtual mx_err recvBytes(void* buf, int maxLen, int* recvd = nullptr) = 0;
+    virtual mx_err send(const char* buf, int len) = 0;
+    virtual mx_err sendMessage(const std::string& msg) = 0;
+
+    virtual mx_err receive(char* buf, int maxLen) = 0;
+    virtual mx_err receiveUntilEOM(std::string& msg) = 0;
+
 
     // helpers
     virtual bool isReadable(int timeoutMs) = 0;
     virtual bool isWritable(int timeoutMs) = 0;
     virtual mx_err setBlocking(bool blocking) = 0;
-    virtual mx_err setTimeoutMs(int recvTimeoutMs, int sendTimeoutMs) = 0;
+    virtual mx_err setTimeoutMs(int TimeoutMs) = 0;
     virtual mx_err close() = 0;
-
-    // high-level receive variants (implemented in derived, but shared signature)
-    virtual mx_err receiveLengthPrefixed(MxMessage& out) = 0;               // [u32 len][payload]
-    virtual mx_err receiveDelimiterBased(const std::string& delimiter, MxMessage& out) = 0;
-    virtual mx_err receiveFixedLength(std::size_t N, MxMessage& out) = 0;
-
-    // convenience
-    virtual mx_err sendString(const std::string& s) {
-        return sendBytes(s.data(), static_cast<int>(s.size()), nullptr);
-    }
-
-    // client id (ip:port) string for logging; empty if not connected
-    virtual std::string clientId() const = 0;
 };

@@ -1,0 +1,4 @@
+Asking about setoption api made.
+Ipv4 and ipv6 detected pass in api or auto detected using poco-api.
+In send api flag we want to give.
+in set timeout api receive and send timeout should be same.
