@@ -1,55 +1,61 @@
-#include "CMx_Non_SecureSocket.h"
-#include "SSLHandler.h"
+#include "Mx_Non_SecureSocket.h"
 #include <iostream>
-#include <thread>
 #include <string>
-#include <exception>
-// ---------------- SSL Test ----------------
-void runSSLTests() {
-    try {
-        SSLHandler handler;
-        handler.testWebsites();  // only call one function
-    } catch (const std::exception& e) {
-        std::cerr << "SSL Test Error: " << e.what() << std::endl;
-    }
-}
+#include <memory>
+
 // ---------------- Server ----------------
-void runServer(int port, int ipMode)
+void runServer(int port, eIpBindingMode ipMode)
 {
     try {
         CMx_NonSecureSocket server;
 
-        // Create server socket with default reuseAddress/reusePort
-        server.createServerSocket(port, (IPMode)ipMode);
-
-        std::cout << "Server listening on port " << port << "\n";
-
-        auto clientSocket = server.accept();
-        if (!clientSocket) {
-            std::cerr << "Failed to accept client\n";
+        // Bind
+        eMxErrorCode ec = server.bind(port, ipMode, true, true);
+        if (ec != eMxErrorCode::NO_ERR) {
+            std::cerr << "[Server] Failed to bind on port " << port
+                      << " (err=" << static_cast<int>(ec) << ")\n";
             return;
         }
 
-        std::cout << "Client connected\n";
+        // Listen
+        ec = server.listen();
+        if (ec != eMxErrorCode::NO_ERR) {
+            std::cerr << "[Server] Failed to listen (err=" << static_cast<int>(ec) << ")\n";
+            return;
+        }
 
+        std::cout << "[Server] Listening on port " << port << "...\n";
+
+        // Accept client
+        auto clientSocket = server.accept();
+        if (!clientSocket) {
+            std::cerr << "[Server] Failed to accept client\n";
+            return;
+        }
+
+        std::cout << "[Server] Client connected\n";
+
+        // Echo loop
         std::string msg;
         while (true) {
-            mx_err ec = clientSocket->receiveUntilEOM(msg);
-            if (ec != mx_err::ok) {
-                std::cerr << "Receive error: " << static_cast<int>(ec) << "\n";
+            msg.clear();
+            eMxErrorCode rc = clientSocket->receiveUntilEOM(msg);
+            if (rc != eMxErrorCode::NO_ERR) {
+                std::cerr << "[Server] Receive failed (err=" << static_cast<int>(rc) << ")\n";
                 break;
             }
 
-            std::cout << "Received: " << msg << "\n";
+            std::cout << "[Server] Received: " << msg << "\n";
 
-            // Echo back
-            clientSocket->sendMessage(msg);
-
-            msg.clear(); // clear for next message
+            rc = clientSocket->sendMessage(msg);
+            if (rc != eMxErrorCode::NO_ERR) {
+                std::cerr << "[Server] Send failed (err=" << static_cast<int>(rc) << ")\n";
+                break;
+            }
         }
 
     } catch (const std::exception& e) {
-        std::cerr << "Server Exception: " << e.what() << "\n";
+        std::cerr << "[Server Exception] " << e.what() << "\n";
     }
 }
 
@@ -59,12 +65,14 @@ void runClient(const std::string& ip, int port)
     try {
         CMx_NonSecureSocket client;
 
-        if (!client.connect(ip, port)) {
-            std::cerr << "Failed to connect to server " << ip << ":" << port << "\n";
+        eMxErrorCode ec = client.connect(ip, port, 5);
+        if (ec != eMxErrorCode::NO_ERR) {
+            std::cerr << "[Client] Failed to connect to "
+                      << ip << ":" << port << " (err=" << static_cast<int>(ec) << ")\n";
             return;
         }
 
-        std::cout << "Connected to server " << ip << ":" << port << "\n";
+        std::cout << "[Client] Connected to " << ip << ":" << port << "\n";
 
         std::string line;
         while (true) {
@@ -72,90 +80,77 @@ void runClient(const std::string& ip, int port)
             std::getline(std::cin, line);
             if (line.empty()) break;
 
-            client.sendMessage(line + "\n");
+            // Append EOM marker
+            line.push_back(EOM);
 
-            std::string response;
-            mx_err ec = client.receiveUntilEOM(response);
-            if (ec != mx_err::ok) {
-                std::cerr << "Receive error: " << static_cast<int>(ec) << "\n";
+            ec = client.sendMessage(line);
+            if (ec != eMxErrorCode::NO_ERR) {
+                std::cerr << "[Client] Send failed (err=" << static_cast<int>(ec) << ")\n";
                 break;
             }
 
-            std::cout << "Echoed: " << response << "\n";
+            std::string response;
+            ec = client.receiveUntilEOM(response);
+            if (ec != eMxErrorCode::NO_ERR) {
+                std::cerr << "[Client] Receive failed (err=" << static_cast<int>(ec) << ")\n";
+                break;
+            }
+
+            std::cout << "[Client] Echoed: " << response << "\n";
         }
 
     } catch (const std::exception& e) {
-        std::cerr << "Client Exception: " << e.what() << "\n";
+        std::cerr << "[Client Exception] " << e.what() << "\n";
     }
 }
 
 // ---------------- Main ----------------
-int main() {
+int main()
+{
+
+Continues:
     try {
-        std::cout << "Select test mode:\n";
-        std::cout << "1. SSL Test\n";
-        std::cout << "2. Socket Test (Server/Client)\n";
-        std::cout << "Enter choice: ";
 
-        int choice = 0;
-        std::cin >> choice;
-        std::cin.ignore(); // flush newline
+        std::cout << "Select mode:\n"
+                  << "1. Server\n"
+                  << "2. Client\n"
+                  << "Choice: ";
 
-        switch (choice) {
-            case 1: { // SSL Test
-                runSSLTests();
-                break;
-            }
-            case 2: { // Socket Test
-                std::cout << "Select mode:\n";
-                std::cout << "1. Server\n";
-                std::cout << "2. Client\n";
-                std::cout << "Enter choice: ";
-                
-                int sc = 0;
-                std::cin >> sc;
-                std::cin.ignore();
+        int sc = 0;
+        std::cin >> sc;
+        std::cin.ignore();
 
-                switch (sc) {
-                    case 1: { // Server
-                        int port = 0;
-                        int ipMode = 0;
-                        std::cout << "Enter port to listen on: ";
-                        std::cin >> port;
+        if (sc == 1) {
+            int port, ipMode;
+            std::cout << "Enter port to listen on: ";
+            std::cin >> port;
+            std::cout << "Enter IP Mode (1=IPv4, 2=IPv6, 3=DualStack): ";
+            std::cin >> ipMode;
+            std::cin.ignore();
 
-                        std::cout << "Enter IP Mode(IPv4=1,IPv6=2,Both=3): ";
-                        std::cin >> ipMode;
+            runServer(port, static_cast<eIpBindingMode>(ipMode));
+        }
+        else if (sc == 2) {
+            std::string ip;
+            int port;
+            std::cout << "Enter server IP: ";
+            std::cin >> ip;
+            std::cout << "Enter server port: ";
+            std::cin >> port;
+            std::cin.ignore();
 
-                        std::cin.ignore();
-                        runServer(port,ipMode);
-                        break;
-                    }
-                    case 2: { // Client
-                        std::string ip;
-                        int port = 0;
-                        std::cout << "Enter server IP: ";
-                        std::cin >> ip;
-                        std::cout << "Enter server port: ";
-                        std::cin >> port;
-                        std::cin.ignore();
-                        runClient(ip, port);
-                        break;
-                    }
-                    default:
-                        std::cerr << "Invalid socket mode choice\n";
-                        return 1;
-                }
-                break;
-            }
-            default:
-                std::cerr << "Invalid test mode choice\n";
-                return 1;
+            runClient(ip, port);
+        }
+        else {
+            std::cerr << "[Error] Invalid choice\n";
         }
 
     } catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << "\n";
+        std::cerr << "[Main Exception] " << e.what() << "\n";
         return 1;
     }
+    
+goto Continues;
 
     return 0;
 }

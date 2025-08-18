@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "xstring": "cpp",
         "algorithm": "cpp",
         "array": "cpp",
         "atomic": "cpp",
@@ -23,6 +24,7 @@
         "exception": "cpp",
         "format": "cpp",
         "forward_list": "cpp",
+        "fstream": "cpp",
         "functional": "cpp",
         "initializer_list": "cpp",
         "iomanip": "cpp",
@@ -69,7 +71,7 @@
         "xlocnum": "cpp",
         "xloctime": "cpp",
         "xmemory": "cpp",
-        "xstring": "cpp",
+        "xstddef": "cpp",
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp"
