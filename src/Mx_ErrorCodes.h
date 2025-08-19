@@ -18,6 +18,7 @@ enum class eMxErrorCode
     ERR_INVALID_SSL_PORT                    = 101,
     ERR_INVALID_IP_RANGE                    = 102,
     ERR_SERVICE_START_FAILED                = 106,
+    ERR_IP_BIND_FAILED                      = 109,
 
     ERR_IPV6_NOT_SUPPORT                    = 200,
     ERR_CONNECTION_TIME_OUT                 = 201,
@@ -26,6 +27,8 @@ enum class eMxErrorCode
     ERR_SOCKET_DISCONNECTED                 = 204,
     ERR_SOCKET_NOT_READY_READ               = 205,
     ERR_SOCKET_NOT_READY_WRITE              = 206,
+    ERR_SOCKET_ALREADY_CONNECTED            = 204,
+    ERR_SSL_PEER_VERIFICATION_FAILED        = 212,
 
     
     //Parser Module Erorr Code

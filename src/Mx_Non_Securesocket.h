@@ -11,28 +11,49 @@ private:
     /**
      * @brief Server socket instance (valid only when running as a server).
      */
-    std::unique_ptr<Poco::Net::ServerSocket> m_server;
+    std::unique_ptr<Poco::Net::ServerSocket> _server;
 
     /**
      * @brief Stream socket instance (used for client connection or accepted peer).
      */
-    std::unique_ptr<Poco::Net::StreamSocket> m_sock;
+    std::unique_ptr<Poco::Net::StreamSocket> _socket;
 
 public:
 
     /**
      * @brief Default constructor for a client socket (disconnected state).
+     * 
+     * Initializes the socket object in a disconnected state.
+     * Use createClientSocket() or connect() later to establish a connection.
      */
     CMx_NonSecureSocket();
 
     /**
+     * @brief Constructor to explicitly specify server/client role.
+     * 
+     * @param isServer Set to true if this socket will be used as a server,
+     *                 false if it will be used as a client.
+     * 
+     * Initializes internal flags according to the intended role.
+     */
+    CMx_NonSecureSocket(mx_bool isServer);
+
+    /**
      * @brief Constructor for an accepted client socket.
+     * 
+     * This constructor is typically used internally by a server after
+     * accepting an incoming connection. It wraps the provided
+     * Poco::Net::StreamSocket inside CMx_NonSecureSocket.
+     * 
      * @param sock The Poco StreamSocket representing the accepted client.
      */
     explicit CMx_NonSecureSocket(Poco::Net::StreamSocket&& sock);
 
     /**
      * @brief Destructor.
+     * 
+     * Cleans up socket resources and ensures the underlying
+     * connection is properly closed if still active.
      */
     ~CMx_NonSecureSocket() override;
 
@@ -177,4 +198,5 @@ public:
      */
     eMxErrorCode close() override;
 
+    std::string getPeerAddress();
 };

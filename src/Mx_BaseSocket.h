@@ -9,11 +9,14 @@
 #include "Mx_Defines.h"
 
 // temporary put here update at common place
-#define MX_SOCKET_CONNECTION_TIMEOUT    8000
-#define MX_DEFAULT_BACKLOG              64
-#define MX_RECEVIE_BUFFER_SIZE          16 * 1000  
-#define MX_SEND_BUFFER_SIZE             16 * 1000  
-#define MX_SOCKET_READY_TIMEOUT_MS      1
+#define MX_SOCKET_CONNECTION_TIMEOUT 8
+#define MX_DEFAULT_BACKLOG 64
+#define MX_MAX_SEND_CHUNK 16 * 1024 // 16 KB
+#define MX_MAX_RECEIVE_CHUNK 16 * 1024 // 16 KB
+#define MX_SOCKET_PORT_MAX 65535
+#define MX_SOCKET_READY_TIMEOUT_MS 8
+#define MX_RECEIVE_BUFFER_SIZE 64 * 1024 // 64 KB
+
 /**
  * @enum eIpBindingMode
  * @brief Specifies the IP mode for the socket.
@@ -213,6 +216,8 @@ class CMx_BaseSocket
          * @return Error code (0 for success).
          */
         virtual eMxErrorCode close() = 0;
+
+        virtual std::string getPeerAddress() = 0;
 };
 
 #endif // CMX_BASESOCKET_H
