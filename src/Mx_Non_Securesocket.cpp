@@ -62,25 +62,25 @@ CMx_NonSecureSocket::~CMx_NonSecureSocket()
  * 
  * @return eMxErrorCode indicating success/failure.
  */
-eMxErrorCode CMx_NonSecureSocket::bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress , mx_bool reusePort )
+eMxErrorCode CMx_NonSecureSocket::bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress , mx_bool reusePort ,eSslVerificationMode verifyMode)
 {
     // Preconditions: must be server, non-SSL
     if (m_bIsSSL) 
     {
-        std::cerr << "[Error] Bind API is not allowed in SSL mode." << std::endl;
+        LOG_ERR("Bind API is not allowed in SSL mode.");
         return eMxErrorCode::ERR_SERVICE_START_FAILED;
     }
 
     if (!m_bIsServer) 
     {
-        std::cerr << "[Error] Bind API can only be used in server mode." << std::endl;
+        LOG_ERR("Bind API can only be used in server mode.");
         return eMxErrorCode::ERR_SERVICE_START_FAILED;
     }
 
     // Validate port number
     if (port == 0 || port > MX_SOCKET_PORT_MAX) 
     {
-        std::cerr << "[Error] Invalid port number: " << port << std::endl;
+        LOG_ERR("Invalid port number: " << port);
         return eMxErrorCode::ERR_INVALID_PORT;
     }
 
@@ -91,12 +91,12 @@ eMxErrorCode CMx_NonSecureSocket::bind(mx_uint64 port, eIpBindingMode ipMode, mx
     }
     catch (const std::bad_alloc&) 
     {
-        std::cerr << "[Error] Memory allocation failed for ServerSocket." << std::endl;
+        LOG_ERR("Memory allocation failed for ServerSocket.");
         return eMxErrorCode::OUT_OF_MEMORY;
     }
     catch (...) 
     {
-        std::cerr << "[Error] Unknown error while creating ServerSocket." << std::endl;
+        LOG_ERR("Unknown error while creating ServerSocket.");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 
@@ -105,11 +105,11 @@ eMxErrorCode CMx_NonSecureSocket::bind(mx_uint64 port, eIpBindingMode ipMode, mx
         try {
             SocketAddress addr(IPAddress::IPv4, static_cast<Poco::UInt16>(port));
             _server->bind(addr, reuseAddress);
-            std::cout << "[Info] Bound using IPv4 only" << std::endl;
+            LOG_INFO("Bound using IPv4 only");
             return eMxErrorCode::NO_ERR;
         }
         catch (const Poco::Exception& ex) {
-            std::cerr << "[Error] IPv4 bind failed: " << ex.displayText() << std::endl;
+            LOG_ERR("IPv4 bind failed: " << ex.displayText());
             return eMxErrorCode::ERR_SERVICE_START_FAILED;
         }
     };
@@ -124,11 +124,11 @@ eMxErrorCode CMx_NonSecureSocket::bind(mx_uint64 port, eIpBindingMode ipMode, mx
             return eMxErrorCode::NO_ERR;
         }
         catch (const NotImplementedException&) {
-            std::cerr << "[Error] IPv6 not supported on this system." << std::endl;
+            LOG_ERR("IPv6 not supported on this system.");
             return eMxErrorCode::ERR_IPV6_NOT_SUPPORT;
         }
         catch (const Poco::Exception& ex) {
-            std::cerr << "[Error] IPv6 bind failed: " << ex.displayText() << std::endl;
+            LOG_ERR("IPv6 bind failed: " << ex.displayText());
             return eMxErrorCode::ERR_SERVICE_START_FAILED;
         }
     };
@@ -140,7 +140,7 @@ eMxErrorCode CMx_NonSecureSocket::bind(mx_uint64 port, eIpBindingMode ipMode, mx
         case eIpBindingMode::IPv6:      return bindIPv6(false);
         case eIpBindingMode::IPv4:      return bindIPv4();
         default:
-            std::cerr << "[Error] Unsupported IP binding mode." << std::endl;
+            LOG_ERR("Unsupported IP binding mode.");
             return eMxErrorCode::UNKNOWN_ERROR;
     }
 
@@ -155,25 +155,25 @@ eMxErrorCode CMx_NonSecureSocket::listen(mx_uint64 backlog)
     // --- Validation ---
     if (m_bIsSSL) 
     {
-        std::cerr << "[Error] listen() not supported for SSL socket in NonSecureSocket class." << std::endl;
+        LOG_ERR("listen() not supported for SSL socket in NonSecureSocket class.");
         return eMxErrorCode::ERR_SERVICE_START_FAILED;
     }
 
     if (!m_bIsServer)
     {
-        std::cerr << "[Error] listen() called but socket was not bound in server mode." << std::endl;
+        LOG_ERR("listen() called but socket was not bound in server mode.");
         return eMxErrorCode::ERR_SERVICE_START_FAILED;
     }
 
     if (!_server) 
     {
-        std::cerr << "[Error] listen() called but server socket is not initialized." << std::endl;
+        LOG_ERR("listen() called but server socket is not initialized.");
         return eMxErrorCode::ERR_SERVICE_START_FAILED;
     }
 
     if (backlog == 0)
     {
-        std::cerr << "[Warning] Invalid backlog (0). Using default backlog = MX_DEFAULT_BACKLOG." << std::endl;
+        LOG_WARN("Invalid backlog (0). Using default backlog = MX_DEFAULT_BACKLOG.");
         backlog = MX_DEFAULT_BACKLOG;
     }
 
@@ -181,17 +181,17 @@ eMxErrorCode CMx_NonSecureSocket::listen(mx_uint64 backlog)
     {
         _server->listen(static_cast<mx_uint64>(backlog));
 
-        std::cout << "[Info] Server is now listening (backlog = " << backlog << ")" << std::endl;
+        LOG_INFO("Server is now listening (backlog = " << backlog << ")");
         return eMxErrorCode::NO_ERR;
     }
     catch (const Poco::Exception& ex) 
     {
-        std::cerr << "[Error] Failed to start listening: " << ex.displayText() << std::endl;
+        LOG_ERR("Failed to start listening: " << ex.displayText());
         return eMxErrorCode::ERR_SERVICE_START_FAILED;
     }
     catch (...) 
     {
-        std::cerr << "[Error] Unknown exception in listen()." << std::endl;
+        LOG_ERR("Unknown exception in listen().");
         return eMxErrorCode::UNKNOWN_ERROR;
         
     }
@@ -207,19 +207,19 @@ std::unique_ptr<CMx_BaseSocket> CMx_NonSecureSocket::accept()
     // --- Validation ---
     if (m_bIsSSL) 
     {
-        std::cerr << "[Error] listen() not supported for SSL socket in NonSecureSocket class." << std::endl;
+        LOG_ERR("accept() not supported for SSL socket in NonSecureSocket class.");
         return nullptr;
     }
 
     if (!m_bIsServer)
     {
-        std::cerr << "[Error] listen() called but socket was not bound in server mode." << std::endl;
+        LOG_ERR("accept() called but socket was not bound in server mode.");
         return nullptr;
     }
 
     if (!_server) 
     {
-        std::cerr << "[Error] accept() called but server socket is not initialized." << std::endl;
+        LOG_ERR("accept() called but server socket is not initialized.");
         return nullptr;
     }
 
@@ -232,16 +232,13 @@ std::unique_ptr<CMx_BaseSocket> CMx_NonSecureSocket::accept()
 
         if (!client.impl()) 
         {
-            std::cerr << "[Error] accept() returned an invalid client socket." << std::endl;
+            LOG_ERR("accept() returned an invalid client socket.");
             return nullptr;
         }
 
-        std::cout << "[Info] Client connected from " << clientAddr.toString() << std::endl;
+        LOG_INFO("Client connected from " << clientAddr.toString());
 
-        // Wrap the StreamSocket into a new CMx_NonSecureSocket
-        
         auto newClient = std::make_unique<CMx_NonSecureSocket>(std::move(client));
-        
         newClient->m_bIsConnected = true;
         newClient->m_bIsServer = false;
 
@@ -249,22 +246,22 @@ std::unique_ptr<CMx_BaseSocket> CMx_NonSecureSocket::accept()
     }
     catch (const Poco::TimeoutException& ex) 
     {
-        std::cerr << "[Warning] Accept timed out: " << ex.displayText() << std::endl;
+        LOG_WARN("Accept timed out: " << ex.displayText());
         return nullptr;
     }
     catch (const Poco::IOException& ex) 
     {
-        std::cerr << "[Error] I/O error during accept: " << ex.displayText() << std::endl;
+        LOG_ERR("I/O error during accept: " << ex.displayText());
         return nullptr;
     }
     catch (const Poco::Exception& ex) 
     {
-        std::cerr << "[Error] Accept failed: " << ex.displayText() << std::endl;
+        LOG_ERR("Accept failed: " << ex.displayText());
         return nullptr;
     }
     catch (...) 
     {
-        std::cerr << "[Error] Unknown exception in accept()." << std::endl;
+        LOG_ERR("Unknown exception in accept().");
         return nullptr;
 
     }
@@ -278,37 +275,37 @@ std::unique_ptr<CMx_BaseSocket> CMx_NonSecureSocket::accept()
  * @param port           Remote port (1–65535).
  * @param timeoutSeconds Timeout in seconds.
  */
-eMxErrorCode CMx_NonSecureSocket::connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutSeconds) 
+eMxErrorCode CMx_NonSecureSocket::connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutSeconds,eSslVerificationMode verifyMode) 
 {
     // --- Validation for Non-Secure Client ---
     if (m_bIsSSL) 
     {
-        std::cerr << "[Error] Non-secure socket cannot use SSL mode." << std::endl;
+        LOG_ERR("Non-secure socket cannot use SSL mode.");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 
     if (m_bIsServer) 
     {
-        std::cerr << "[Error] Cannot call connect() on a server socket." << std::endl;
+        LOG_ERR("Cannot call connect() on a server socket.");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 
     if (m_bIsConnected) 
     {
-        std::cerr << "[Error] Socket is already connected to a server." << std::endl;
+        LOG_ERR("Socket is already connected to a server.");
         return eMxErrorCode::ERR_SOCKET_ALREADY_CONNECTED;
     }
 
      // --- Validation ---
     if (ip.empty()) 
     {
-        std::cerr << "[Error] connect() called with empty IP address." << std::endl;
+        LOG_ERR("connect() called with empty IP address.");
         return eMxErrorCode::ERR_INVALID_IP_RANGE;
     }
 
     if (port == 0 || port > MX_SOCKET_PORT_MAX) 
     {
-        std::cerr << "[Error] connect() called with invalid port: " << port << std::endl;
+        LOG_ERR("connect() called with invalid port: " << port);
         return eMxErrorCode::ERR_INVALID_PORT;
     }
 
@@ -322,7 +319,7 @@ eMxErrorCode CMx_NonSecureSocket::connect(const std::string& ip, mx_uint64 port,
             }
             catch (const std::bad_alloc&) 
             {
-                std::cerr << "[Error] Memory allocation failed while creating StreamSocket." << std::endl;
+                LOG_ERR("Memory allocation failed while creating StreamSocket.");
                 return eMxErrorCode::OUT_OF_MEMORY;
             }
         }
@@ -332,8 +329,8 @@ eMxErrorCode CMx_NonSecureSocket::connect(const std::string& ip, mx_uint64 port,
 
         _socket->connect(address, timeout);
 
-        std::cout << "[Info] Connected to " << address.toString()
-                  << " (timeout = " << timeoutSeconds << "s)" << std::endl;
+        LOG_INFO("Connected to " << address.toString()
+                 << " (timeout = " << timeoutSeconds << "s)");
 
         m_bIsConnected = true;
         m_bIsServer = false;
@@ -342,15 +339,15 @@ eMxErrorCode CMx_NonSecureSocket::connect(const std::string& ip, mx_uint64 port,
     }
     catch (const Poco::TimeoutException& ex) 
     {
-        std::cerr << "[Error] Connection timed out: " << ex.displayText() << std::endl;
+        LOG_ERR("Connection timed out: " << ex.displayText());
         return eMxErrorCode::ERR_CONNECTION_TIME_OUT;
     }
     catch (const Poco::Exception& ex) {
-        std::cerr << "[Error] General POCO exception during connect: " << ex.displayText() << std::endl;
+        LOG_ERR("General POCO exception during connect: " << ex.displayText());
         return eMxErrorCode::ERR_CONNECTION_FAILED;
     }
     catch (...) {
-        std::cerr << "[Error] Unknown exception in connect()." << std::endl;
+        LOG_ERR("Unknown exception in connect().");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 }
@@ -364,7 +361,7 @@ eMxErrorCode CMx_NonSecureSocket::send(const mx_char* buffer, mx_uint64 len)
 {
     if (!_socket) 
     {
-        std::cerr << "[Error] Socket not initialized." << std::endl;
+        LOG_ERR("Socket not initialized.");
         return eMxErrorCode::ERR_SOCKET_NOT_INITIALIZED;
     }
 
@@ -389,14 +386,13 @@ eMxErrorCode CMx_NonSecureSocket::send(const mx_char* buffer, mx_uint64 len)
         {
             // Calculate how much we can send in this chunk
             int chunkSize = static_cast<int>(
-                std::min(len - totalSent, static_cast<size_t>(sendBufSize))
+                std::min(static_cast<mx_uint64>(len - totalSent), static_cast<mx_uint64>(sendBufSize))
             );
 
             int n = _socket->sendBytes(dataPtr + totalSent, chunkSize);
 
             if (n <= 0) {
-                std::cerr << "[Warning] Send failed or socket closed (sent=" 
-                          << n << ")." << std::endl;
+                LOG_WARN("Send failed or socket closed (sent=" << n << ").");
                 m_bIsConnected = false;
                 return eMxErrorCode::ERR_SOCKET_DISCONNECTED;
             }
@@ -407,11 +403,11 @@ eMxErrorCode CMx_NonSecureSocket::send(const mx_char* buffer, mx_uint64 len)
         return eMxErrorCode::NO_ERR;
     } 
     catch (const Poco::TimeoutException& ex) {
-        std::cerr << "[Error] Send timeout: " << ex.displayText() << std::endl;
+        LOG_ERR("Send timeout: " << ex.displayText());
         return eMxErrorCode::ERR_CONNECTION_TIME_OUT;
     } 
     catch (...) {
-        std::cerr << "[Error] Unknown exception in send()." << std::endl;
+        LOG_ERR("Unknown exception in send().");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 }
@@ -423,7 +419,7 @@ eMxErrorCode CMx_NonSecureSocket::sendMessage(const std::string& msg)
 {
     if (msg.empty()) 
     {
-        std::cerr << "[Error] sendMessage() called with empty message." << std::endl;
+        LOG_ERR("sendMessage() called with empty message.");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 
@@ -431,7 +427,7 @@ eMxErrorCode CMx_NonSecureSocket::sendMessage(const std::string& msg)
     eMxErrorCode errcode = send(reinterpret_cast<const mx_char*>(msg.data()), static_cast<int>(msg.size()));
     if (errcode != eMxErrorCode::NO_ERR) 
     {
-        std::cerr << "[Error] Failed to send message body." << std::endl;
+        LOG_ERR("Failed to send message body.");
         return errcode;
     }
 
@@ -471,13 +467,13 @@ eMxErrorCode CMx_NonSecureSocket::receive(mx_char* buffer, mx_uint64 maxLen)
         while (totalReceived < maxLen) 
         {
             // Calculate how much to read in this iteration
-            mx_uint64 chunkSize = std::min<mx_uint64>(recvBufSize, maxLen - totalReceived);
+            mx_uint64 chunkSize = std::min(static_cast<mx_uint64>(recvBufSize), static_cast<mx_uint64>(maxLen - totalReceived));
 
             int n = _socket->receiveBytes(buffer + totalReceived, static_cast<int>(chunkSize));
 
             if (n == 0) 
             {
-                std::cerr << "[Info] Connection closed gracefully by peer." << std::endl;
+                LOG_INFO("Connection closed gracefully by peer.");
                 return (totalReceived > 0) ? eMxErrorCode::NO_ERR : eMxErrorCode::ERR_SOCKET_DISCONNECTED;
             }
 
@@ -493,17 +489,17 @@ eMxErrorCode CMx_NonSecureSocket::receive(mx_char* buffer, mx_uint64 maxLen)
     }
     catch (const Poco::TimeoutException& ex) 
     {
-        std::cerr << "[Error] Receive timeout: " << ex.displayText() << std::endl;
+        LOG_ERR("Receive timeout: " << ex.displayText());
         return eMxErrorCode::ERR_CONNECTION_TIME_OUT;
     }
     catch (const Poco::Exception& ex) 
     {
-        std::cerr << "[Error] General POCO exception in receive: " << ex.displayText() << std::endl;
+        LOG_ERR("General POCO exception in receive: " << ex.displayText());
         return eMxErrorCode::UNKNOWN_ERROR;
     }
     catch (...) 
     {
-        std::cerr << "[Error] Unknown exception in receive()." << std::endl;
+        LOG_ERR("Unknown exception in receive().");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 }
@@ -516,7 +512,7 @@ eMxErrorCode CMx_NonSecureSocket::receiveUntilEOM(std::string& msg)
     // --- Preconditions ---
     if (!_socket)
     {
-        std::cerr << "[Error] receiveUntilEOM() called but socket is not initialized.\n";
+        LOG_ERR("receiveUntilEOM() called but socket is not initialized.");
         return eMxErrorCode::ERR_SOCKET_NOT_INITIALIZED;
     }
 
@@ -540,18 +536,18 @@ eMxErrorCode CMx_NonSecureSocket::receiveUntilEOM(std::string& msg)
             }
             catch (const Poco::TimeoutException& ex)
             {
-                std::cerr << "[Warning] Socket read timed out: " << ex.displayText() << "\n";
+                LOG_WARN("Socket read timed out: " << ex.displayText());
                 return eMxErrorCode::ERR_CONNECTION_TIME_OUT;
             }
             catch (...)
             {
-                std::cerr << "[Error] Unknown exception in receiveUntilEOM().\n";
+                LOG_ERR("Unknown exception in receiveUntilEOM().");
                 return eMxErrorCode::UNKNOWN_ERROR;
             }
 
             if (n <= 0)
             {
-                std::cerr << "[Info] Socket disconnected by peer.\n";
+                LOG_INFO("Socket disconnected by peer.");
                 return eMxErrorCode::ERR_SOCKET_DISCONNECTED;  
             }
 
@@ -566,7 +562,7 @@ eMxErrorCode CMx_NonSecureSocket::receiveUntilEOM(std::string& msg)
     }
     catch (...)
     {
-        std::cerr << "[Error] Unknown exception in receiveUntilEOM.\n";
+        LOG_ERR("Unknown exception in receiveUntilEOM.");
         return eMxErrorCode::UNKNOWN_ERROR;
     }
 }
@@ -640,7 +636,7 @@ eMxErrorCode CMx_NonSecureSocket::setReceiveTimeout(mx_uint64 receivetimeoutMs)
 
     } catch (const Poco::Exception& ex) 
     {
-        std::cerr << "[Error] setReceiveTimeout failed: " << ex.displayText() << std::endl;
+        LOG_ERR("setReceiveTimeout failed: " << ex.displayText());
         return eMxErrorCode::UNKNOWN_ERROR;
     } catch (...) {
         return eMxErrorCode::UNKNOWN_ERROR;
@@ -661,7 +657,7 @@ eMxErrorCode CMx_NonSecureSocket::setSendTimeout(mx_uint64 sendtimeoutMs)
 
     } catch (const Poco::Exception& ex) 
     {
-        std::cerr << "[Error] setSendTimeout failed: " << ex.displayText() << std::endl;
+        LOG_ERR("setSendTimeout failed: " << ex.displayText());
         return eMxErrorCode::UNKNOWN_ERROR;
     } catch (...) 
     {

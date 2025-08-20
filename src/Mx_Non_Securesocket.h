@@ -70,7 +70,7 @@ public:
      * @param reusePort Allow port reuse (if supported).
      * @return Error code (NO_ERROR on success).
      */
-    eMxErrorCode bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress = true, mx_bool reusePort = false) override;
+    eMxErrorCode bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress = true, mx_bool reusePort = false, eSslVerificationMode verifyMode = eSslVerificationMode::MODE_NONE) override;
 
     /**
      * @brief Start listening for incoming connections.
@@ -96,7 +96,7 @@ public:
      * @param timeoutSeconds Connection timeout in seconds.
      * @return Error code (NO_ERROR on success).
      */
-    eMxErrorCode connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutSeconds = MX_SOCKET_CONNECTION_TIMEOUT) override;
+    eMxErrorCode connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutSeconds = MX_SOCKET_CONNECTION_TIMEOUT,eSslVerificationMode verifyMode = eSslVerificationMode::MODE_NONE) override;
 
 
     // ---------------- Data Transfer API ----------------

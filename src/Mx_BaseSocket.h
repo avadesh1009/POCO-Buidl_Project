@@ -17,6 +17,23 @@
 #define MX_SOCKET_READY_TIMEOUT_MS 8
 #define MX_RECEIVE_BUFFER_SIZE 64 * 1024 // 64 KB
 
+/// SSL Verification Mode
+enum class eSslVerificationMode {
+    MODE_NONE,      // No verification
+    MODE_RELAXED,  // Accept self-signed, relaxed checks
+    MODE_STRICT   // Verify peer certificates
+};
+
+
+// ============================================================================
+// Logging macros
+// ============================================================================
+#define LOG_INFO(msg)   std::cout << "[info] "  << msg << std::endl
+#define LOG_DEBUG(msg)  std::cout << "[debug] " << msg << std::endl
+#define LOG_WARN(msg)   std::cout << "[warn] "  << msg << std::endl
+#define LOG_ERR(msg)    std::cerr << "[err] "   << msg << std::endl
+
+
 /**
  * @enum eIpBindingMode
  * @brief Specifies the IP mode for the socket.
@@ -38,7 +55,7 @@ enum class eIpBindingMode
  */
 class CMx_BaseSocket
 {
-    protected:
+    public:
         mx_bool m_bIsConnected; 
         mx_bool m_bIsSSL;       
         mx_bool m_bIsServer;    
@@ -108,7 +125,7 @@ class CMx_BaseSocket
          * @param reusePort Whether to allow port reuse.
          * @return Error code (0 for success).
          */
-        virtual eMxErrorCode bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress = true, mx_bool reusePort = false) = 0;
+        virtual eMxErrorCode bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress = true, mx_bool reusePort = false, eSslVerificationMode verifyMode = eSslVerificationMode::MODE_NONE) = 0;
 
         /**
          * @brief Start listening for incoming connections.
@@ -130,7 +147,7 @@ class CMx_BaseSocket
          * @param timeoutSeconds Connection timeout in seconds.
          * @return Error code (0 for success).
          */
-        virtual eMxErrorCode connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutSeconds = MX_SOCKET_CONNECTION_TIMEOUT) = 0;
+        virtual eMxErrorCode connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutSeconds = MX_SOCKET_CONNECTION_TIMEOUT, eSslVerificationMode verifyMode = eSslVerificationMode::MODE_NONE) = 0;
 
         /**
          * @brief Send raw data over the socket.
@@ -217,6 +234,8 @@ class CMx_BaseSocket
          */
         virtual eMxErrorCode close() = 0;
 
+
+        // temp remove later
         virtual std::string getPeerAddress() = 0;
 };
 

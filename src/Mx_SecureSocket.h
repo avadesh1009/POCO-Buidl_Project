@@ -13,14 +13,6 @@
 #include <chrono>
 
 // ============================================================================
-// Logging macros
-// ============================================================================
-#define LOG_INFO(msg)   std::cout << "[info] "  << msg << std::endl
-#define LOG_DEBUG(msg)  std::cout << "[debug] " << msg << std::endl
-#define LOG_WARN(msg)   std::cout << "[warn] "  << msg << std::endl
-#define LOG_ERR(msg)    std::cerr << "[err] "   << msg << std::endl
-
-// ============================================================================
 // Secure Socket Class
 // ============================================================================
 class CMx_SecureSocket : public CMx_BaseSocket
@@ -69,7 +61,7 @@ class CMx_SecureSocket : public CMx_BaseSocket
          * @param reusePort Flag to enable/disable port reuse.
          * @return Error code (0 for success).
          */
-        eMxErrorCode bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress = true, mx_bool reusePort = false) override;
+        eMxErrorCode bind(mx_uint64 port, eIpBindingMode ipMode, mx_bool reuseAddress = true, mx_bool reusePort = false, eSslVerificationMode verifyMode = eSslVerificationMode::MODE_NONE) override;
 
         /**
          * @brief Start listening for incoming connections.
@@ -95,7 +87,7 @@ class CMx_SecureSocket : public CMx_BaseSocket
          * @param timeoutMs Connection timeout in milliseconds.
          * @return Error code (0 for success).
          */
-        eMxErrorCode connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutMs = MX_SOCKET_CONNECTION_TIMEOUT) override;
+        eMxErrorCode connect(const std::string& ip, mx_uint64 port, mx_uint64 timeoutMs = MX_SOCKET_CONNECTION_TIMEOUT, eSslVerificationMode verifyMode = eSslVerificationMode::MODE_NONE) override;
 
         // --------------------------------------------------------------------
         // Data I/O
