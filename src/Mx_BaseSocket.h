@@ -1,9 +1,6 @@
 #ifndef CMX_BASESOCKET_H
 #define CMX_BASESOCKET_H
 
-#include <string>
-#include <memory>
-#include <chrono>
 #include "Mx_ErrorCodes.h"
 #include "mx_types.h"
 #include "Mx_Defines.h"
@@ -16,6 +13,7 @@
 #define MX_SOCKET_PORT_MAX 65535
 #define MX_SOCKET_READY_TIMEOUT_MS 8
 #define MX_RECEIVE_BUFFER_SIZE 64 * 1024 // 64 KB
+#define MX_BUFFER_SIZE 8192 
 
 /// SSL Verification Mode
 enum class eSslVerificationMode {
@@ -55,7 +53,7 @@ enum class eIpBindingMode
  */
 class CMx_BaseSocket
 {
-    public:
+    protected:
         mx_bool m_bIsConnected; 
         mx_bool m_bIsSSL;       
         mx_bool m_bIsServer;    
@@ -235,7 +233,7 @@ class CMx_BaseSocket
         virtual eMxErrorCode close() = 0;
 
 
-        // temp remove later
+        // used only for debugging/logging peer info
         virtual std::string getPeerAddress() = 0;
 };
 
